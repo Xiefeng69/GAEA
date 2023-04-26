@@ -1,0 +1,12 @@
+src/__pycache__
+data/DBP15K
+data
+save
+result
+archive
+visualization
+mapped_triples_1.txt
+mapped_triples_2.txt
+triples_1.txt
+triples_2.txt
+.ipynb_checkpoints

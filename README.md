@@ -1,4 +1,6 @@
-# Improving Knowledge Graph Entity Alignment with Graph Augmentation
+# GAEA
+
+[PAKDD2023] The source codes and datasets for `Improving Knowledge Graph Entity Alignment with Graph Augmentation`.
 
 ## Getting Started
 
@@ -38,7 +40,7 @@ python run_fold.py --task en_fr_15k
 
 We also provide jupyter notebook version in `GAEA.ipynb`.
 
-<!-- > If you have any difficulty or question in running code and reproducing experimental results, please email to xiefeng@nudt.edu.cn. -->
+> If you have any difficulty or question in running code and reproducing experimental results, please email to xiefeng@nudt.edu.cn.
 
-<!-- ## Acknowledgement
-We refer to the codes of these repos: GCN-Align, OpenEA, MuGNN, IMEA. Thanks for their great contributions! -->
+## Acknowledgement
+We refer to the codes of these repos: GCN-Align, OpenEA, MuGNN, IMEA. Thanks for their great contributions!
