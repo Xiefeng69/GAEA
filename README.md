@@ -1,6 +1,6 @@
 # GAEA
 
-[PAKDD2023] The source codes and datasets for `Improving Knowledge Graph Entity Alignment with Graph Augmentation`.
+[PAKDD2023] The source codes for `Improving Knowledge Graph Entity Alignment with Graph Augmentation`.
 
 ## Getting Started
 
