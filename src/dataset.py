@@ -27,20 +27,24 @@ class KGData():
 
         if "dbp15k" in self.file_dir:
             # --- load ids dict ---#
-            self.ent2id, self.id2ent, [self.kg1_ent_ids, self.kg2_ent_ids] = self.load_dict(f'{self.file_dir}/0_{self.fold}/ent_ids_', file_num=2)
-            self.rel2id, self.id2rel, [self.kg1_rel_ids, self.kg2_rel_ids] = self.load_dict(f'{self.file_dir}/0_{self.fold}/rel_ids_', file_num=2)
+            [self.ent2id1, self.ent2id2], [self.id2ent1, self.id2ent2], [self.kg1_ent_ids, self.kg2_ent_ids] = self.load_dict(f'{self.file_dir}/0_{self.fold}/ent_ids_', file_num=2)
+            [self.rel2id1, self.rel2id2], [self.id2rel1, self.id2rel2], [self.kg1_rel_ids, self.kg2_rel_ids] = self.load_dict(f'{self.file_dir}/0_{self.fold}/rel_ids_', file_num=2)
+            self.ent2id = {**self.ent2id1, **self.ent2id2} # If dbp is used, ent2id contains a duplicate entity-to-index mapping
+            self.id2ent = {**self.id2ent1, **self.id2ent2}
+            self.rel2id = {**self.rel2id1, **self.rel2id2}
+            self.id2rel = {**self.id2rel1, **self.id2rel2}
 
             # --- load triples ---#
-            self.entity1, self.rel1, self.triples1 = self.load_triples(f"{self.file_dir}/0_{fold}/triples_{lang[0]}")
-            self.entity2, self.rel2, self.triples2 = self.load_triples(f"{self.file_dir}/0_{fold}/triples_{lang[1]}")
+            self.entity1, self.rel1, self.triples1 = self.load_triples(f"{self.file_dir}/0_{fold}/triples_{lang[0]}", self.ent2id1, self.rel2id1)
+            self.entity2, self.rel2, self.triples2 = self.load_triples(f"{self.file_dir}/0_{fold}/triples_{lang[1]}", self.ent2id2, self.rel2id2)
         
-        elif "OpenEA" in self.file_dir: # need to give the id manually
+        elif "OpenEA" in self.file_dir:
             ent2id1, id2ent1, rel2id1, id2rel1, self.kg1_ent_ids, self.kg1_rel_ids, self.entity1, self.rel1, self.triples1 = self.load_openea(f"{self.file_dir}/rel_triples_{lang[0]}", ent_begin_id=0, rel_begin_id=0)
             ent2id2, id2ent2, rel2id2, id2rel2, self.kg2_ent_ids, self.kg2_rel_ids, self.entity2, self.rel2, self.triples2 = self.load_openea(f"{self.file_dir}/rel_triples_{lang[1]}", ent_begin_id=len(self.kg1_ent_ids), rel_begin_id=len(self.kg1_rel_ids), rel2id=rel2id1)
             self.ent2id = {**ent2id1, **ent2id2}
             self.id2ent = {**id2ent1, **id2ent2}
             self.rel2id = {**rel2id1, **rel2id2}
-            # self.id2rel = {**id2rel1, **id2rel2} this code is wrong!!!
+            # self.id2rel = {**id2rel1, **id2rel2} # Duplicate relations have been processed
             self.id2rel = {v:k for k,v in self.rel2id.items()}
 
             if save:
@@ -75,19 +79,21 @@ class KGData():
 
         # --- load train, (val), and test pair ---#
         if "dbp15k" in self.file_dir:
-            self.train_pair = self.load_alignment_pair(f"{self.file_dir}/0_{self.fold}/sup_ent_ids") # entity links for training/validation
-            self.test_pair = self.load_alignment_pair(f"{self.file_dir}/0_{self.fold}/ref_ent_ids") # entity links for testing
+            self.train_pair = self.load_alignment_pair(f"{self.file_dir}/0_{self.fold}/sup_ent_ids", self.ent2id1, self.ent2id2) # entity links for training/validation
+            self.test_pair = self.load_alignment_pair(f"{self.file_dir}/0_{self.fold}/ref_ent_ids", self.ent2id1, self.ent2id2) # entity links for testing
         elif "OpenEA" in self.file_dir:
             self.train_pair = self.load_alignment_pair_openea(f"{self.file_dir}/721_5fold/{self.fold}/train_links", self.ent2id)
             self.val_pair = self.load_alignment_pair_openea(f"{self.file_dir}/721_5fold/{self.fold}/valid_links", self.ent2id)
             self.test_pair = self.load_alignment_pair_openea(f"{self.file_dir}/721_5fold/{self.fold}/test_links", self.ent2id)
         else:
-            alignment_pair = self.load_alignment_pair(f"{self.file_dir}/0_{self.fold}/ill_ent_ids") # entity links encoded by ids
-            np.random.shuffle(alignment_pair)
-            train_pair_size = int(len(alignment_pair)*train_ratio)
-            self.train_pair, self.test_pair = alignment_pair[0:train_pair_size], alignment_pair[train_pair_size:]
+            raise Exception("Not available")
+        # else:
+        #     alignment_pair = self.load_alignment_pair(f"{self.file_dir}/0_{self.fold}/ill_ent_ids") # entity links encoded by ids
+        #     np.random.shuffle(alignment_pair)
+        #     train_pair_size = int(len(alignment_pair)*train_ratio)
+        #     self.train_pair, self.test_pair = alignment_pair[0:train_pair_size], alignment_pair[train_pair_size:]
         if self.val and "OpenEA" not in self.file_dir:
-            self.train_pair, self.val_pair = self.split_train_val_alignment_pair(self.train_pair)
+            self.train_pair, self.val_pair = self.split_train_val_alignment_pair(self.train_pair) # need to split data manually
         
         self.train_pair = np.array(self.train_pair)
         self.train_pair_size = len(self.train_pair)
@@ -135,7 +141,8 @@ class KGData():
         print("--------------dataset summary--------------\n")
         print(f"current task: {self.task}, file direction: {self.file_dir}\n")
         print(f"current fold: {self.fold}\n")
-        print(f"entity num: {self.ent_num}, duplicated entity num: {len(self.ent2id) - self.ent_num}\n")
+        # With OpenEA, there are no duplicate entities, whereas with dbp, the number of duplicate entities is equal to the size of sup_ent_ids
+        print(f"entity num: {self.ent_num}, duplicated entity num: {self.ent_num - len(self.ent2id)}\n")
         print(f"entity num of kg1: {self.kg1_ent_num}, min index: {min(self.kg1_ent_ids)}, max index: {max(self.kg1_ent_ids)}\n")
         print(f"entity num of kg2: {self.kg2_ent_num}, min index: {min(self.kg2_ent_ids)}, max index: {max(self.kg2_ent_ids)}\n")
         print(f"relation num: {self.rel_num}\n")
@@ -191,17 +198,25 @@ class KGData():
             file_names = [data_dir + str(i) for i in range(1,3)]
         else:
             file_names = [data_dir]
-        what2id, id2what, ids = dict(), dict(), list()
+        return_result = [[], [], []]
+        index, base = 0, 0
         for file_name in file_names:
+            what2id, id2what, ids = dict(), dict(), list()
             with open(file_name, 'r', encoding='utf-8') as f:
                 data = f.read().strip().split("\n") # the instance in the list is formed like "32742\thttp://dbpedia.org/resource/Dae_Jang_Geum"
-                data = [i.split("\t") for i in data]
-                what2id = {**what2id, **dict([[i[1], int(i[0])] for i in data])}
-                id2what = {**id2what, **dict([[int(i[0]), i[1]] for i in data])}
-                ids.append(set([int(i[0]) for i in data]))
-        return what2id, id2what, ids
+                for i in data:
+                    i = i.split("\t")
+                    what2id[int(i[0])] = index + base
+                    id2what[index + base] = int(i[0])
+                    index += 1
+            ids = list(id2what.keys())
+            index, base = 0, index
+            return_result[0].append(what2id)
+            return_result[1].append(id2what)
+            return_result[2].append(ids)
+        return return_result[0], return_result[1], return_result[2]
     
-    def load_triples(self, triple_file_name):
+    def load_triples(self, triple_file_name, ent2id, rel2id):
         '''
             Read triples file, like: data/DBP15K/fr_en/triples_1, data/DBP15K/fr_en/triples_2
             return entity, relation, and triples information
@@ -211,18 +226,18 @@ class KGData():
         rel = set()
         for line in open(triple_file_name, 'r'):
             head, relation, tail = [int(item) for item in line.split()] # the instance is formed as "head_id relation_id tail_id"
-            entity.add(head)
-            entity.add(tail)
-            rel.add(relation)
-            triples.append([head, relation, tail])
+            entity.add(ent2id[head])
+            entity.add(ent2id[tail])
+            rel.add(rel2id[relation])
+            triples.append([ent2id[head], rel2id[relation], ent2id[tail]])
         return entity, rel, triples
 
-    def load_alignment_pair(self, file_name):
+    def load_alignment_pair(self, file_name, ent2id1, ent2id2):
         '''Load alignment pair information for training and tesing phase'''
         alignment_pair = list()
         for line in open(file_name, 'r'):
             e1, e2 = line.split()
-            alignment_pair.append((int(e1), int(e2)))
+            alignment_pair.append((ent2id1[int(e1)], ent2id2[int(e2)]))
         return alignment_pair
 
     def load_alignment_pair_openea(self, file_name, ent2id):
